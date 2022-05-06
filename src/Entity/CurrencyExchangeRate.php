@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 class CurrencyExchangeRate
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
+    #[ORM\GeneratedValue(strategy: 'AUTO')]
     #[ORM\Column(type: 'integer')]
     private $id;
 

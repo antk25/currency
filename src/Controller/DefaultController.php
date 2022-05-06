@@ -2,84 +2,77 @@
 
 namespace App\Controller;
 
+use App\Model\CurrencyExchangeRateResponse;
 use App\Repository\CurrencyExchangeRateRepository;
+use App\Service\CurrencyExchangeRateService;
+use App\Service\ExchangeRates\ExchangeRatesService;
 use DateTime;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class DefaultController extends AbstractController
 {
-    private CurrencyExchangeRateRepository $currencyExchangeRateRepository;
-    public $base;
-    public $second;
-    public $date;
+    private CurrencyExchangeRateService $currencyExchangeRateService;
+    private ExchangeRatesService $exchangeRatesService;
+    public string $base;
+    public string $second;
+    public string $date;
 
-    public function __construct(CurrencyExchangeRateRepository $currencyExchangeRateRepository)
+    public function __construct(CurrencyExchangeRateService $currencyExchangeRateService,
+                                ExchangeRatesService $exchangeRatesService,
+                                CurrencyExchangeRateRepository $currencyExchangeRateRepository)
     {
-       $this->currencyExchangeRateRepository = $currencyExchangeRateRepository;
+       $this->exchangeRatesService = $exchangeRatesService;
+       $this->currencyExchangeRateService = $currencyExchangeRateService;
     }
 
-    #[Route('/rate', name: 'get_rate')]
-    public function getRate(Request $request)
+    /**
+     * @throws TransportExceptionInterface
+     * @throws ServerExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ClientExceptionInterface
+     */
+    #[Route('/exchange-rate', name: 'get_rate')]
+    public function getRateByDate(Request $request): \Symfony\Component\HttpFoundation\JsonResponse
     {
         $base = $request->query->get('base');
         $second = $request->query->get('second');
+//        $date = $request->query->get('date');
         $date = DateTime::createFromFormat('Y-m-d', $request->query->get('date'));
 
-        $response = $this->currencyExchangeRateRepository->findOneBy([
-            'base' => $base,
-            'second' => $second,
-            'date' => $date,
-        ]);
+        $resultInDb = $this->currencyExchangeRateService
+            ->getExchangeRateByDate($base, $second, $date);
 
-        if (!$response) {
-
-            $curl = curl_init();
-            curl_setopt_array($curl, array(
-            CURLOPT_URL => "https://api.apilayer.com/exchangerates_data/2020-05-16?symbols=RUB&base=EUR",
-            CURLOPT_HTTPHEADER => array(
-                "Content-Type: text/plain",
-                "apikey: O3GQOxAOYLdMQlJ0RX2M2FvH6OP59QLq"
-            ),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => "",
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => "GET"
-            ));
-
-            $raw_response = curl_exec($curl);
-
-            $array_response = json_decode($raw_response, true);
-
-            $base = $array_response['base'];
-
-            $second = $array_response['rates']['RUB'];
-
-            $date = $array_response['date'];
-
-            $result = [
-                'base' => $base,
-                'second' => $second,
-                'date' => $date,
-            ];
-
-            return $this->json($result);
-
+        if ($resultInDb)
+        {
+            return $this->json($resultInDb);
+        }
+        else
+        {
+            return $this->json($this->exchangeRatesService
+                ->getExchangeRateByDate($base, $second, $date));
         }
 
-        return $this->json($response);
     }
 
-    #[Route('/default', name: 'app_default')]
-    public function index(): Response
+    #[Route('/exchange-rates', name: 'get_rates')]
+    public function getRatesByPeriod(Request $request): JsonResponse
     {
-        $rates = $this->currencyExchangeRateRepository->findAll();
+        $base = $request->query->get('base');
+        $second = $request->query->get('second');
+        $datePeriodFrom = DateTime::createFromFormat('Y-m-d', $request->query->get('datePeriodFrom'));
+        $datePeriodTo = DateTime::createFromFormat('Y-m-d', $request->query->get('datePeriodTo'));
 
-        return $this->json($rates);
+        return $this->json($this->currencyExchangeRateService
+            ->getExchangeRateByPeriodDates($base, $second, $datePeriodTo, $datePeriodFrom));
+
     }
+
 }

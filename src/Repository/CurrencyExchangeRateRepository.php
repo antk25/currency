@@ -47,6 +47,28 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
         }
     }
 
+
+    /**
+     * @return CurrencyExchangeRate[]
+     */
+    public function findAllBetweenDates(string $base, string $second, \DateTime $datePeriodFrom, \DateTime $datePeriodTo): array
+    {
+
+        $qb = $this->createQueryBuilder("e");
+        $qb
+            ->andWhere('e.base = :base')
+            ->andWhere('e.second = :second')
+            ->andWhere('e.date BETWEEN :from AND :to')
+            ->setParameter('base', $base)
+            ->setParameter('second', $second)
+            ->setParameter('from', $datePeriodFrom )
+            ->setParameter('to', $datePeriodTo)
+        ;
+
+        return $qb->getQuery()->getResult();
+
+    }
+
     // /**
     //  * @return CurrencyExchangeRate[] Returns an array of CurrencyExchangeRate objects
     //  */
@@ -64,15 +86,20 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
     }
     */
 
-    /*
-    public function findOneBySomeField($value): ?CurrencyExchangeRate
-    {
-        return $this->createQueryBuilder('c')
-            ->andWhere('c.exampleField = :val')
-            ->setParameter('val', $value)
-            ->getQuery()
-            ->getOneOrNullResult()
-        ;
-    }
-    */
+
+//    public function findOneBySomeField($value): ?CurrencyExchangeRate
+//    {
+//        return $this->createQueryBuilder('c')
+//            ->andWhere('c.exampleField = :val')
+//            ->setParameter('val', $value)
+//            ->getQuery()
+//            ->getOneOrNullResult()
+//        ;
+//    }
+
+//    public function findExchangeRate(array $filter)
+//    {
+//        return $this->findOneBy($filter);
+//    }
+
 }
