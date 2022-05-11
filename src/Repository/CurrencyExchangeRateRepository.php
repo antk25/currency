@@ -23,10 +23,6 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
         parent::__construct($registry, CurrencyExchangeRate::class);
     }
 
-    /**
-     * @throws ORMException
-     * @throws OptimisticLockException
-     */
     public function add(CurrencyExchangeRate $entity, bool $flush = true): void
     {
         $this->_em->persist($entity);
@@ -35,10 +31,6 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
         }
     }
 
-    /**
-     * @throws ORMException
-     * @throws OptimisticLockException
-     */
     public function remove(CurrencyExchangeRate $entity, bool $flush = true): void
     {
         $this->_em->remove($entity);
@@ -46,7 +38,6 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
             $this->_em->flush();
         }
     }
-
 
     /**
      * @return CurrencyExchangeRate[]
@@ -69,37 +60,16 @@ class CurrencyExchangeRateRepository extends ServiceEntityRepository
 
     }
 
-    // /**
-    //  * @return CurrencyExchangeRate[] Returns an array of CurrencyExchangeRate objects
-    //  */
-    /*
-    public function findByExampleField($value)
+    /**
+     * @return CurrencyExchangeRate[]
+     */
+    public function findCurrencyExchangeRate(string $from, string $to, \DateTime $date): array
     {
-        return $this->createQueryBuilder('c')
-            ->andWhere('c.exampleField = :val')
-            ->setParameter('val', $value)
-            ->orderBy('c.id', 'ASC')
-            ->setMaxResults(10)
-            ->getQuery()
-            ->getResult()
-        ;
+        return $this->findBy([
+            'base' => $from,
+            'second' => $to,
+            'date' => $date,
+        ]);
     }
-    */
-
-
-//    public function findOneBySomeField($value): ?CurrencyExchangeRate
-//    {
-//        return $this->createQueryBuilder('c')
-//            ->andWhere('c.exampleField = :val')
-//            ->setParameter('val', $value)
-//            ->getQuery()
-//            ->getOneOrNullResult()
-//        ;
-//    }
-
-//    public function findExchangeRate(array $filter)
-//    {
-//        return $this->findOneBy($filter);
-//    }
 
 }

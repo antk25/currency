@@ -3,49 +3,66 @@
 namespace App\Service;
 
 use App\Entity\CurrencyExchangeRate;
+use App\Exception\CurrencyExchangeRateNotFoundException;
 use App\Model\CurrencyExchangeRateResponse;
 use App\Repository\CurrencyExchangeRateRepository;
+use DateTime;
+use Doctrine\Common\Annotations\AnnotationReader;
+use http\Message;
+use phpDocumentor\Reflection\PseudoTypes\NonEmptyLowercaseString;
+use Symfony\Component\Serializer\Encoder\JsonEncoder;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
+use Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
+use Symfony\Component\Serializer\NameConverter\MetadataAwareNameConverter;
 
 class CurrencyExchangeRateService
 {
-    private CurrencyExchangeRateRepository $currencyExchangeRateRepository;
 
-    public function __construct(CurrencyExchangeRateRepository $currencyExchangeRateRepository)
+    public function __construct(private CurrencyExchangeRateRepository $currencyExchangeRateRepository)
     {
-       $this->currencyExchangeRateRepository = $currencyExchangeRateRepository;
     }
 
-    public function getExchangeRateByDate($base, $second, $date): ?array
+    /**
+     * @throws ExceptionInterface
+     */
+    public function getExchangeRateByDate(?string $from, ?string $to, DateTime $date): ?array
     {
-        $exchangeRate = $this->currencyExchangeRateRepository->findBy([
-            'base' => $base,
-            'second' => $second,
-            'date' => $date,
-        ]);
+        $exchangeRate = $this->currencyExchangeRateRepository
+                ->findCurrencyExchangeRate($from, $to, $date);
 
-        if ($exchangeRate)
-        {
-            $items = array_map(
-                fn(CurrencyExchangeRate $currencyExchangeRate) => new CurrencyExchangeRateResponse(
-                    $currencyExchangeRate->getBase(),
-                    $currencyExchangeRate->getSecond(),
-                    $currencyExchangeRate->getDate()->format('Y-m-d'),
-                    $currencyExchangeRate->getRate()
-                ),
-                $exchangeRate
-            );
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
 
-            return $items;
-        }
-        else
-        {
-            return null;
-        }
+        $metadataAwareNameConverter = new MetadataAwareNameConverter($classMetadataFactory);
+
+        $serializer = new Serializer(
+            [new ObjectNormalizer($classMetadataFactory, $metadataAwareNameConverter)]
+        );
+
+        return $serializer->normalize($exchangeRate, null, [AbstractNormalizer::ATTRIBUTES
+                => ['base', 'second', 'date', 'rate']]);
 
     }
 
-    public function getExchangeRateByPeriodDates($base, $second, $datePeriodTo, $datePeriodFrom): array
+    public function getExchangeRateByPeriodDates(?string $from, ?string $to, DateTime $datePeriodFrom, DateTime $datePeriodTo): array
     {
-        return $this->currencyExchangeRateRepository->findAllBetweenDates($base, $second, $datePeriodTo, $datePeriodFrom);
+
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
+
+        $metadataAwareNameConverter = new MetadataAwareNameConverter($classMetadataFactory);
+
+        $serializer = new Serializer(
+            [new ObjectNormalizer($classMetadataFactory, $metadataAwareNameConverter)]
+        );
+
+        $exchangeRates =  $this->currencyExchangeRateRepository
+        ->findAllBetweenDates($from, $to, $datePeriodFrom, $datePeriodTo);
+
+        return $serializer->normalize($exchangeRates, null, [AbstractNormalizer::ATTRIBUTES
+        => ['base', 'second', 'date', 'rate']]);
+
     }
 }

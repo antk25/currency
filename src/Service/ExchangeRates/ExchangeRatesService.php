@@ -2,11 +2,16 @@
 
 namespace App\Service\ExchangeRates;
 
-use App\Model\ExchangeRatesResponse;
+use App\Entity\CurrencyExchangeRate;
 use DateTime;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Encoder\XmlEncoder;
-use Symfony\Component\Serializer\SerializerInterface;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory;
+use Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader;
+use Symfony\Component\Serializer\NameConverter\MetadataAwareNameConverter;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
+use Symfony\Component\Serializer\Serializer;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
@@ -16,13 +21,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ExchangeRatesService
 {
-    private HttpClientInterface $httpClientInterface;
-    private SerializerInterface $serializer;
 
-    public function __construct(HttpClientInterface $httpClientInterface, SerializerInterface $serializer)
+    public function __construct(private HttpClientInterface $httpClientInterface)
     {
-       $this->httpClientInterface = $httpClientInterface;
-       $this->serializer = $serializer;
     }
 
     /**
@@ -30,6 +31,7 @@ class ExchangeRatesService
      * @throws ServerExceptionInterface
      * @throws RedirectionExceptionInterface
      * @throws ClientExceptionInterface
+     * @throws ExceptionInterface
      */
     public function getExchangeRateByDate(string $base, string $second, DateTime $date): array
     {
@@ -46,22 +48,24 @@ class ExchangeRatesService
             );
 
         $array = json_decode($response->getContent(), true);
-
-        $newarr = [
+//
+        $result = [
             'from' => $array['base'],
             'date' => $array['date'],
             'to' => array_key_first($array['rates']),
             'rate' => current($array['rates']),
         ];
+//
+        $classMetadataFactory = new ClassMetadataFactory(new AnnotationLoader(new AnnotationReader()));
 
-//        $newarr = json_encode($newarr);
+        $metadataAwareNameConverter = new MetadataAwareNameConverter($classMetadataFactory);
 
-        return $newarr;
+        $serializer = new Serializer(
+            [new ObjectNormalizer($classMetadataFactory, $metadataAwareNameConverter)]
+        );
 
-//        return $this->serializer->deserialize(
-//            $newarr,
-//            ExchangeRatesResponse::class,
-//            JsonEncoder::FORMAT
-//        );
+        return $serializer->normalize($result, null, [AbstractNormalizer::ATTRIBUTES
+        => ['base', 'second', 'date', 'rate']]);
+
     }
 }

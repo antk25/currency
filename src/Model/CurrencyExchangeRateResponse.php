@@ -2,9 +2,12 @@
 
 namespace App\Model;
 
+use Symfony\Component\Serializer\Annotation\SerializedName;
+
 class CurrencyExchangeRateResponse
 
 {
+    #[SerializedName('from')]
     private string $base;
     private string $second;
     private string $date;

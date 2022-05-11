@@ -3,7 +3,9 @@
 namespace App\Entity;
 
 use App\Repository\CurrencyExchangeRateRepository;
+use DateTime;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\SerializedName;
 
 #[ORM\Entity(repositoryClass: CurrencyExchangeRateRepository::class)]
 class CurrencyExchangeRate
@@ -11,19 +13,21 @@ class CurrencyExchangeRate
     #[ORM\Id]
     #[ORM\GeneratedValue(strategy: 'AUTO')]
     #[ORM\Column(type: 'integer')]
-    private $id;
+    private ?int $id;
 
     #[ORM\Column(type: 'string', length: 255)]
-    private $base;
+    #[SerializedName('from')]
+    private ?string $base;
 
     #[ORM\Column(type: 'string', length: 255)]
-    private $second;
+    #[SerializedName('to')]
+    private ?string $second;
 
     #[ORM\Column(type: 'date')]
-    private $date;
+    private ?DateTime $date;
 
     #[ORM\Column(type: 'float')]
-    private $rate;
+    private ?float $rate;
 
     public function getId(): ?int
     {
@@ -54,12 +58,12 @@ class CurrencyExchangeRate
         return $this;
     }
 
-    public function getDate(): ?\DateTimeInterface
+    public function getDate(): ?string
     {
-        return $this->date;
+        return $this->date->format('Y-m-d');
     }
 
-    public function setDate(\DateTimeInterface $date): self
+    public function setDate(DateTime $date): self
     {
         $this->date = $date;
 
